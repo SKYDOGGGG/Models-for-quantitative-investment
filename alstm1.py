@@ -66,7 +66,7 @@ class ALSTMModel(nn.Module):
 
 if __name__ == "__main__":
     x = torch.randn(5000, 60, 200)
-    model = ALSTMModel(d_feat=200, hidden_size=64, num_layers=2, dropout=0.0, rnn_type="GRU")
+    model = ALSTMModel(d_feat=200, hidden_size=64, num_layers=2, dropout=0.2, rnn_type="GRU")
     y = model(x)
     y = y.detach().numpy()
     print(y.shape)
