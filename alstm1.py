@@ -1,7 +1,7 @@
 """
 2024.1.23 17:00
 Alstm1
-网络结构分为注意力网络和普通网络，普通网络中加入了一层在时间维度上进行卷积的卷积层，卷积后通道数不变（仍然是六十天），然后传入线性层和rnn层；注意力网络不变
+网络结构分为注意力网络和普通网络，普通网络中加入了一层在时间维度上进行卷积的卷积层；注意力网络不变
 """
 
 import torch
@@ -26,7 +26,7 @@ class ALSTMModel(nn.Module):
         except Exception as e:
             raise ValueError("unknown rnn_type `%s`" % self.rnn_type) from e
         self.net = nn.Sequential()
-        self.conv1 = nn.Conv1d(in_channels=60, out_channels=60, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=200, out_channels=200, kernel_size=3, padding=1)
         self.fc_in = nn.Linear(in_features=self.input_size, out_features=self.hid_size)
 
         self.rnn = klass(
@@ -45,18 +45,22 @@ class ALSTMModel(nn.Module):
         return weighted_hidden.squeeze(1)
 
     def forward(self, inputs):
-        inputs = inputs.view(len(inputs), -1, self.input_size)
+        # inputs: [batch_size, input_size,input_day]
+        inputs = inputs.view(len(inputs), self.input_size, -1)
+        print('conv_out', inputs.shape)
         conv_out = F.relu(self.conv1(inputs))
-        out = F.tanh(self.fc_in(conv_out))
+        print('conv_out',conv_out.shape)
+        conv_out = conv_out.permute(0, 2, 1)
 
+        out = F.tanh(self.fc_in(conv_out))
         rnn_out, _ = self.rnn(out)
         print('rnn_out', rnn_out.shape)
-        attention_score = self.attention_net(rnn_out)
+        attention_score = self.attention_net(rnn_out)  # [batch, seq_len, 1]
         print('attention_score', attention_score.shape)
         out_att = torch.sum(attention_score, dim=1)
         out = self.fc_out(
             torch.cat((rnn_out[:, -1, :], out_att), dim=1)
-        ) 
+        )  # [batch, seq_len, num_directions * hidden_size] -> [batch, 1]
         return out[..., 0]
 
 
