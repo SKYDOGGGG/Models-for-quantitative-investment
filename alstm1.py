@@ -45,19 +45,18 @@ class ALSTMModel(nn.Module):
         return weighted_hidden.squeeze(1)
 
     def forward(self, inputs):
-        # inputs: [batch_size, input_size,input_day]
         inputs = inputs.view(len(inputs), -1, self.input_size)
         conv_out = F.relu(self.conv1(inputs))
         out = F.tanh(self.fc_in(conv_out))
 
-        rnn_out, _ = self.rnn(out)  # [batch, seq_len, num_directions * hidden_size]
+        rnn_out, _ = self.rnn(out)
         print('rnn_out', rnn_out.shape)
-        attention_score = self.attention_net(rnn_out)  # [batch, seq_len, 1]
+        attention_score = self.attention_net(rnn_out)
         print('attention_score', attention_score.shape)
         out_att = torch.sum(attention_score, dim=1)
         out = self.fc_out(
             torch.cat((rnn_out[:, -1, :], out_att), dim=1)
-        )  # [batch, seq_len, num_directions * hidden_size] -> [batch, 1]
+        ) 
         return out[..., 0]
 
 
