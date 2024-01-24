@@ -20,13 +20,13 @@ class Attention(nn.Module):
         self.w_v = nn.Linear(in_features=input_size, out_features=1, bias=False)
 
     def forward(self, query, keys):
-        query = query.unsqueeze(0)  # [1, batch_size, hid_size]
-        query = query.permute(1, 0, 2)  # [batch_size, 1, hid_size]
-        energy = self.w_v(torch.tanh(self.w_q(query) + self.w_k(keys)))  # [seq_len, batch_size, hid_size]
+        query = query.unsqueeze(0) 
+        query = query.permute(1, 0, 2)
+        energy = self.w_v(torch.tanh(self.w_q(query) + self.w_k(keys)))
         attention = energy.squeeze(2)
         attention_weights = F.softmax(attention, dim=1)
-        attention_score = attention_weights.unsqueeze(2)  # [seq_len, batch_size, 1]
-        context_vector = torch.sum(keys * attention_score, dim=1)  # [batch_size, hid_size]
+        attention_score = attention_weights.unsqueeze(2)
+        context_vector = torch.sum(keys * attention_score, dim=1) 
         return context_vector, attention_weights
 
 
