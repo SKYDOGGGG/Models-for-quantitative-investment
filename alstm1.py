@@ -27,7 +27,7 @@ class ALSTMModel(nn.Module):
         except Exception as e:
             raise ValueError("unknown rnn_type `%s`" % self.rnn_type) from e
         self.net = nn.Sequential()
-        self.conv1 = nn.Conv1d(in_channels=200, out_channels=200, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=self.input_size, out_channels=self.input_size, kernel_size=3, padding=1)
         self.fc_in = nn.Linear(in_features=self.input_size, out_features=self.hid_size)
 
         self.rnn = klass(
@@ -60,13 +60,13 @@ class ALSTMModel(nn.Module):
         out_att = torch.sum(attention_score, dim=1)
         out = self.fc_out(
             torch.cat((rnn_out[:, -1, :], out_att), dim=1)
-        ) 
+        )
         return out[..., 0]
 
 
 if __name__ == "__main__":
-    x = torch.randn(5000, 60, 200)
-    model = ALSTMModel(d_feat=200, hidden_size=64, num_layers=2, dropout=0.2, rnn_type="GRU")
+    x = torch.randn(12000, 30, 500)
+    model = ALSTMModel(d_feat=500, hidden_size=64, num_layers=2, dropout=0.8, rnn_type="GRU")
     y = model(x)
     y = y.detach().numpy()
     print(y.shape)
