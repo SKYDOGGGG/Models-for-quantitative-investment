@@ -42,7 +42,7 @@ class ALSTMModel(nn.Module):
 
     def attention_net(self, rnn_out):
         attention_weights = F.softmax(self.att_fc(rnn_out), dim=1)
-        weighted_hidden = torch.bmm(attention_weights.transpose(1, 2), rnn_out)
+        weighted_hidden = torch.mul(attention_weights, rnn_out)
         return weighted_hidden.squeeze(1)
 
     def forward(self, inputs):
@@ -57,12 +57,12 @@ class ALSTMModel(nn.Module):
         out = self.fc_out(
             torch.cat((rnn_out[:, -1, :], out_att), dim=1)
         )
-        return out[..., 0]
+        return out[...]
 
 
 if __name__ == "__main__":
-    x = torch.randn(12000, 30, 500)
-    model = ALSTMModel(d_feat=500, hidden_size=64, num_layers=2, dropout=0.8, rnn_type="GRU")
+    x = torch.randn(2000, 30, 100)
+    model = ALSTMModel(d_feat=100, hidden_size=64, num_layers=2, dropout=0.8, rnn_type="GRU")
     y = model(x)
     y = y.detach().numpy()
     print(y.shape)
