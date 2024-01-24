@@ -1,9 +1,20 @@
 """
-2024.1.24 14:00
+2024.1.24 15:00
 Alstm2
-引入Bahdanau Attention机制，模型由卷积网络、RNN（GRU）以及注意力机制
-"""
 
+引入Bahdanau Attention机制，模型由卷积网络、RNN（GRU）以及注意力机制
+
+Attention用于计算注意力分数和上下文向量。
+它使用三个线性层（w_q, w_k, w_v）来计算查询（query）和键（keys）之间的关系，然后产生注意力分数和上下文向量。
+上下文向量是每个股票的每个隐藏层在时间维度上的加权值，权重由注意力分数决定，格式为[batch_size, hid_size]。
+
+整体上，输入数据同时通过：1.卷积神经网络（包含卷积层），然后通过一个全连接层；2. GRU 网络，其输出与最后一个隐藏状态一起被送入注意力模块，再经过 Dropout 层。
+
+卷积网络和 GRU 网络的输出被合并并通过最后一个全连接层，产生最终的输出。
+
+模型传参有一定变化，需要传入时间长度time_period。
+
+"""
 
 import torch
 import torch.nn as nn
@@ -20,13 +31,13 @@ class Attention(nn.Module):
         self.w_v = nn.Linear(in_features=input_size, out_features=1, bias=False)
 
     def forward(self, query, keys):
-        query = query.unsqueeze(0) 
-        query = query.permute(1, 0, 2)
-        energy = self.w_v(torch.tanh(self.w_q(query) + self.w_k(keys)))
+        query = query.unsqueeze(0)  # [1, batch_size, hid_size]
+        query = query.permute(1, 0, 2)  # [batch_size, 1, hid_size]
+        energy = self.w_v(torch.tanh(self.w_q(query) + self.w_k(keys)))  # [seq_len, batch_size, hid_size]
         attention = energy.squeeze(2)
         attention_weights = F.softmax(attention, dim=1)
-        attention_score = attention_weights.unsqueeze(2)
-        context_vector = torch.sum(keys * attention_score, dim=1) 
+        attention_score = attention_weights.unsqueeze(2)  # [seq_len, batch_size, 1]
+        context_vector = torch.sum(keys * attention_score, dim=1)  # [batch_size, hid_size]
         return context_vector, attention_weights
 
 
@@ -91,12 +102,12 @@ class ALSTMModel(nn.Module):
         out = self.fc_out(out)
         return out.squeeze(1)
 
-
-if __name__ == "__main__":
-    x = torch.randn(20000, 20, 300)
-    model = ALSTMModel(d_feat=300, time_period=20, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.6,
-                       rnn_type="GRU")
-    y = model(x)
-    y = y.detach().numpy()
-    print(y.shape)
-    print(y)
+# test
+# if __name__ == "__main__":
+#     x = torch.randn(20000, 20, 300)
+#     model = ALSTMModel(d_feat=300, time_period=20, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.6,
+#                        rnn_type="GRU")
+#     y = model(x)
+#     y = y.detach().numpy()
+#     print(y.shape)
+#     print(y)
