@@ -100,7 +100,7 @@ class ALSTMModel(nn.Module):
         out = torch.cat((conv_out, out_lstm.unsqueeze(2)), dim=2)
         out = out.view(len(out), -1)
         out = self.fc_out(out)
-        return out.squeeze(1)
+        return out
 
 # test
 # if __name__ == "__main__":
