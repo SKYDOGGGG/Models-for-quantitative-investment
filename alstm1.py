@@ -47,16 +47,12 @@ class ALSTMModel(nn.Module):
 
     def forward(self, inputs):
         inputs = inputs.view(len(inputs), self.input_size, -1)
-        print('conv_out', inputs.shape)
         conv_out = F.relu(self.conv1(inputs))
-        print('conv_out',conv_out.shape)
         conv_out = conv_out.permute(0, 2, 1)
 
         out = F.tanh(self.fc_in(conv_out))
         rnn_out, _ = self.rnn(out)
-        print('rnn_out', rnn_out.shape)
         attention_score = self.attention_net(rnn_out)
-        print('attention_score', attention_score.shape)
         out_att = torch.sum(attention_score, dim=1)
         out = self.fc_out(
             torch.cat((rnn_out[:, -1, :], out_att), dim=1)
