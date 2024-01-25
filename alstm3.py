@@ -8,10 +8,7 @@ Alstm3
 将注意力机制的计算过程分为多个头部，每个头部都有自己的注意力分数和上下文向量，最后将多个头部的上下文向量拼接起来，再通过一个线性层进行变换，
 得到最终的上下文向量。
 
-优势：可以多个头独立计算，提高并行度，同时可以让每个头部关注不同的特征。
-
-网络结构变动：改动了注意力类的网络结构，将query/key/value分别过不同的线性层，再以此计算注意力分数和上下文向量，最后拼接多个头部后再经过一个线性层；
-              rnn的类型可以采用gru或lstm
+可能优势：可以多个头独立计算，提高并行度，同时可以让每个头部关注不同的特征。
 
 更新：取消time_period参数以统一代码
 """
@@ -28,13 +25,13 @@ class MultiHeadAttention(nn.Module):
         super(MultiHeadAttention, self).__init__()
         self.hid_size = input_size
         self.num_heads = num_heads
-        self.attention_size = input_size // num_heads
+        self.attention_size = self.hid_size // self.num_heads
         # query, key, value的线性层
-        self.w_q = nn.Linear(in_features=input_size, out_features=input_size)
-        self.w_k = nn.Linear(in_features=input_size, out_features=input_size)
-        self.w_v = nn.Linear(in_features=input_size, out_features=input_size)
+        self.w_q = nn.Linear(in_features=self.hid_size, out_features=self.hid_size)
+        self.w_k = nn.Linear(in_features=self.hid_size, out_features=self.hid_size)
+        self.w_v = nn.Linear(in_features=self.hid_size, out_features=self.hid_size)
 
-        self.w_o = nn.Linear(in_features=input_size, out_features=input_size)
+        self.w_o = nn.Linear(in_features=self.hid_size, out_features=self.hid_size)
 
     def forward(self, query, keys, value):
         batch_size = query.size(0)
@@ -125,8 +122,8 @@ class ALSTMModel(nn.Module):
 
 # # test
 # if __name__ == "__main__":
-#     x = torch.randn(1000, 40, 400)
-#     model = ALSTMModel(d_feat=400, hidden_size1=128, hidden_size2=64, num_layers=3, dropout=0.6,
+#     x = torch.randn(10000,60,130)
+#     model = ALSTMModel(d_feat=130, hidden_size1=128, hidden_size2=64, num_layers=3, dropout=0.6,
 #                        rnn_type="gru")
 #     y = model(x)
 #     y = y.detach().numpy()
