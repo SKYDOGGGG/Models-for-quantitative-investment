@@ -123,12 +123,12 @@ class ALSTMModel(nn.Module):
         return out[...]
 
 
-# test
-if __name__ == "__main__":
-    x = torch.randn(1000, 40, 400)
-    model = ALSTMModel(d_feat=400, hidden_size1=128, hidden_size2=64, num_layers=3, dropout=0.6,
-                       rnn_type="gru")
-    y = model(x)
-    y = y.detach().numpy()
-    print(y.shape)
-    print(y)
+# # test
+# if __name__ == "__main__":
+#     x = torch.randn(1000, 40, 400)
+#     model = ALSTMModel(d_feat=400, hidden_size1=128, hidden_size2=64, num_layers=3, dropout=0.6,
+#                        rnn_type="gru")
+#     y = model(x)
+#     y = y.detach().numpy()
+#     print(y.shape)
+#     print(y)
