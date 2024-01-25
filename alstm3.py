@@ -9,6 +9,8 @@ Alstm3
 得到最终的上下文向量。
 
 可能优势：可以多个头独立计算，提高并行度，同时可以让每个头部关注不同的特征。
+
+更新：取消time_period参数以统一代码
 """
 
 import torch
@@ -49,12 +51,11 @@ class MultiHeadAttention(nn.Module):
 
 
 class ALSTMModel(nn.Module):
-    def __init__(self, d_feat=6, time_period=60, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.0,
+    def __init__(self, d_feat=6, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.0,
                  rnn_type="GRU"):
         super().__init__()
         self.hid_size1 = hidden_size1
         self.hid_size2 = hidden_size2
-        self.time_period = time_period
         self.input_size = d_feat
         self.dropout = dropout
         self.attention = MultiHeadAttention(input_size=self.hid_size2)
@@ -77,7 +78,6 @@ class ALSTMModel(nn.Module):
             nn.ReLU(),
         )
 
-        self.fc1 = nn.Linear(in_features=self.time_period, out_features=1)
         self.fc_out = nn.Linear(in_features=self.hid_size2 * 2, out_features=1)
 
         self.rnn = klass(
@@ -89,13 +89,13 @@ class ALSTMModel(nn.Module):
         )
 
         self.lstm_drop = nn.Dropout(p=self.dropout)
-        self.lstm_fc = nn.Linear(in_features=self.time_period, out_features=1)
+        self.global_pool = nn.AdaptiveAvgPool1d(1)
 
     def forward(self, inputs):
         # inputs: [batch_size, input_size, input_day]
         inputs = inputs.view(len(inputs), self.input_size, -1)
         conv_out = self.net(inputs)  # [batch_size, hid_size2, input_day]
-        conv_out = self.fc1(conv_out)
+        conv_out = self.global_pool(conv_out)
 
         inputs_lstm = inputs.clone().permute(0, 2, 1)  # [input_size, batch_size, input_day]
 
@@ -111,7 +111,7 @@ class ALSTMModel(nn.Module):
         out_lstm = self.lstm_drop(context)
         out_lstm = out_lstm.transpose(1, 2)
 
-        out_lstm = self.lstm_fc(out_lstm)
+        out_lstm = self.global_pool(out_lstm)
 
         out = torch.cat((conv_out, out_lstm), dim=2)
         out = out.view(len(out), -1)
@@ -120,12 +120,12 @@ class ALSTMModel(nn.Module):
         return out[...]
 
 
-# # test
-# if __name__ == "__main__":
-#     x = torch.randn(3000, 40, 500)
-#     model = ALSTMModel(d_feat=500, time_period=40, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.6,
-#                        rnn_type="lstm")
-#     y = model(x)
-#     y = y.detach().numpy()
-#     print(y.shape)
-#     print(y)
+# test
+if __name__ == "__main__":
+    x = torch.randn(1000, 40, 400)
+    model = ALSTMModel(d_feat=400, hidden_size1=128, hidden_size2=64, num_layers=3, dropout=0.6,
+                       rnn_type="gru")
+    y = model(x)
+    y = y.detach().numpy()
+    print(y.shape)
+    print(y)
