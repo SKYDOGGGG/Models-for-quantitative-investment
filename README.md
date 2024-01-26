@@ -2,7 +2,6 @@
 
 ## Attention-based LSTM/GRU models
 
----
 2024.1.23 17:00  Alstm1
 
 网络结构分为注意力网络和普通网络，普通网络中加入了一层在时间维度上进行卷积的卷积层，一维卷积层在因子维度上沿着时间步（交易日）移动；
@@ -27,4 +26,14 @@ Attention用于计算注意力分数和上下文向量。
 参考F. Karim, S. Majumdar, H. Darabi and S. Chen, LSTM Fully Convolutional Networks for Time Series Classification
 
 ---
+2024.1.25 14:30  Alstm3
 
+引入多头注意力机制(替换alstm2中的Bahdanau)，模型由卷积网络和引入注意力机制的RNN（GRU或LSTM）组成。
+
+多头注意力：将注意力机制的计算过程分为多个头部，每个头部都有自己的注意力分数和上下文向量，最后将多个头部的上下文向量拼接起来，再通过一个线性层进行变换，得到最终的上下文向量。网络结构与Alstm2类似。
+
+可能优势：可以多个头独立计算，提高并行度，同时可以让每个头部关注不同的特征。
+
+更新：取消time_period参数以统一代码
+
+---
