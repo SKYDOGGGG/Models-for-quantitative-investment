@@ -1,18 +1,17 @@
 """
-2024.1.24 15:00
-Alstm2
+2024.1.26 17:00
+Alstm2_adv
 
-引入Bahdanau Attention机制，模型由卷积网络和引入注意力机制的RNN（GRU）组成
+在Alstm2的基础上进行改动。
 
-Attention用于计算注意力分数和上下文向量。
-它使用三个线性层（w_q, w_k, w_v）来计算查询（query）和键（keys）之间的关系，然后产生注意力分数和上下文向量。
-上下文向量是每个股票的每个隐藏层在时间维度上的加权值，权重由注意力分数决定，格式为[batch_size, hid_size]。
+在网络结构层面上引入对抗训练，实现方式是将原本的rnn-attention网络路径复制，在复制的路径最后加入梯度反转层
+（该层不改变输出，但是在梯度反传时会给梯度乘一个负权重，改变其符号）然后将两个路径的输出拼接起来，送入全连接层进行最终的输出。
 
-整体上，输入数据同时通过：1.卷积神经网络（包含卷积层），然后通过一个全连接层；2. GRU 网络，其输出与最后一个隐藏状态一起被送入注意力模块，再经过 Dropout 层。
+梯度反转层中乘的权重是一个随着训练次数增加而增加的值，该值在0到0.5之间，初始值为0，每次训练后增加0.1，最大值为0.5，
+这是为了让模型在对抗性强度不断增加的情况下保持性能，增强泛化能力。
 
-卷积网络和 GRU 网络的输出被合并并通过最后一个全连接层，产生最终的输出。
-
-模型传参有一定变化，需要传入时间长度time_period。
+梯度反转层适用于存在较大过拟合风险的场景，它可以减少对特定训练集中数据的依赖，提高模型泛化性能。
+相比于在训练样本中加入噪声，这种方式更加简单，且不会改变训练样本的分布。
 
 """
 
@@ -43,7 +42,7 @@ class Attention(nn.Module):
 
 
 class ALSTMModel(nn.Module):
-    def __init__(self, d_feat=6, time_period=60, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.0,
+    def __init__(self, d_feat=6, time_period=60, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.6,
                  rnn_type="GRU"):
         super().__init__()
         self.hid_size1 = hidden_size1
@@ -179,7 +178,6 @@ class GradRevLayer(nn.Module):
 
 # test
 if __name__ == "__main__":
-    torch.manual_seed(1)
     x = torch.randn(20000, 60, 200)
     model = ALSTMModel(d_feat=200, time_period=60, hidden_size1=128, hidden_size2=64, num_layers=2, dropout=0.6,
                        rnn_type="gru")
