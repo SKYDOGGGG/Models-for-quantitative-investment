@@ -1,8 +1,8 @@
 """
-2024.1.29 10:30
+2024.1.29 16:00
 Alstm3-0129
 
-在alstm3的基础上进行修改，以减少过拟合问题
+在alstm3的基础上进行修改，如减少卷积层，以减少过拟合问题；同时引入双向rnn，以提高模型性能。
 """
 
 import torch
@@ -12,9 +12,9 @@ import numpy as np
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, input_size, num_heads=4):
+    def __init__(self, input_size, bi_indicator=2, num_heads=4):
         super(MultiHeadAttention, self).__init__()
-        self.hid_size = input_size
+        self.hid_size = input_size * bi_indicator
         self.num_heads = num_heads
         self.attention_size = self.hid_size // self.num_heads
         # query, key, value的线性层
@@ -42,14 +42,16 @@ class MultiHeadAttention(nn.Module):
 
 class ALSTMModel(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.5,
-                 rnn_type="GRU"):
+                 rnn_type="GRU", 双向=False):
         super().__init__()
         self.hid_size = hidden_size
         self.input_size = d_feat
         self.dropout = dropout
-        self.attention = MultiHeadAttention(input_size=self.hid_size)
         self.rnn_type = rnn_type
         self.rnn_layer = num_layers
+        self.bidirectional = 双向
+        self.bi_ind = 1 + int(双向)
+        self.attention = MultiHeadAttention(input_size=self.hid_size, bi_indicator=self.bi_ind, num_heads=4)
         self._build_model()
 
     def _build_model(self):
@@ -64,7 +66,7 @@ class ALSTMModel(nn.Module):
             nn.ReLU(),
         )
 
-        self.fc_out = nn.Linear(in_features=self.hid_size * 2, out_features=1)
+        self.fc_out = nn.Linear(in_features=self.hid_size * (1 + self.bi_ind), out_features=1)
 
         self.rnn = klass(
             input_size=self.input_size,
@@ -72,6 +74,7 @@ class ALSTMModel(nn.Module):
             num_layers=self.rnn_layer,
             batch_first=True,
             dropout=self.dropout,
+            bidirectional=self.bidirectional
         )
 
         self.lstm_drop = nn.Dropout(p=self.dropout)
@@ -101,19 +104,21 @@ class ALSTMModel(nn.Module):
 
         if self.rnn_type.lower() == "lstm":
             rnn_out, (h, c) = self.rnn(inputs_lstm)
+            h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
         elif self.rnn_type.lower() == "gru":
             rnn_out, h = self.rnn(inputs_lstm)
+            h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
         else:
             raise ValueError("unknown rnn_type `%s`" % self.rnn_type)
 
-        context = self.attention(h[-1], rnn_out, rnn_out)
+        context = self.attention(h, rnn_out, rnn_out)
 
         out_lstm = self.lstm_drop(context)
         out_lstm = out_lstm.transpose(1, 2)
 
         out_lstm = self.global_pool(out_lstm)
 
-        out = torch.cat((conv_out, out_lstm), dim=2)
+        out = torch.cat((conv_out, out_lstm), dim=1)
         out = out.view(len(out), -1)
         out = self.fc_out(out)
 
@@ -124,7 +129,7 @@ class ALSTMModel(nn.Module):
 if __name__ == "__main__":
     x = torch.randn(1000, 60, 100)
     model = ALSTMModel(d_feat=100, hidden_size=64, num_layers=2, dropout=0.5,
-                       rnn_type="gru")
+                       rnn_type="gru", 双向=True)
     y = model(x)
     y = y.detach().numpy()
     print(y.shape)
