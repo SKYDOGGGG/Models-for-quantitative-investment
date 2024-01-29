@@ -11,7 +11,6 @@ import torch.nn.functional as F
 import numpy as np
 
 
-# 加入多头注意力的改进的alstm2
 class MultiHeadAttention(nn.Module):
     def __init__(self, input_size, num_heads=4):
         super(MultiHeadAttention, self).__init__()
