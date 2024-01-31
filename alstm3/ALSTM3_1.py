@@ -11,9 +11,9 @@ import torch.nn.functional as F
 import numpy as np
 
 
-class MultiHeadAttention(nn.Module):
+class MultiHeadAttention3_1(nn.Module):
     def __init__(self, input_size, bi_indicator=2, num_heads=4):
-        super(MultiHeadAttention, self).__init__()
+        super(MultiHeadAttention3_1, self).__init__()
         self.hid_size = input_size * bi_indicator
         self.num_heads = num_heads
         self.attention_size = self.hid_size // self.num_heads
@@ -42,7 +42,7 @@ class MultiHeadAttention(nn.Module):
 
 class ALSTM3_1(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.5,
-                 rnn_type="GRU", 双向=False):
+                 rnn_type="GRU", 双向=False, **kwargs):
         super().__init__()
         self.hid_size = hidden_size
         self.input_size = d_feat
@@ -51,7 +51,7 @@ class ALSTM3_1(nn.Module):
         self.rnn_layer = num_layers
         self.bidirectional = 双向
         self.bi_ind = 1 + int(双向)
-        self.attention = MultiHeadAttention(input_size=self.hid_size, bi_indicator=self.bi_ind, num_heads=4)
+        self.attention = MultiHeadAttention3_1(input_size=self.hid_size, bi_indicator=self.bi_ind, num_heads=4)
         self._build_model()
 
     def _build_model(self):
@@ -81,7 +81,6 @@ class ALSTM3_1(nn.Module):
         self.global_pool = nn.AdaptiveAvgPool1d(1)
 
     def init_weights(self, m):
-        import torch.nn.init as init
         if isinstance(m, nn.Linear):
             init.xavier_uniform_(m.weight)
             if m.bias is not None:
@@ -104,10 +103,16 @@ class ALSTM3_1(nn.Module):
 
         if self.rnn_type.lower() == "lstm":
             rnn_out, (h, c) = self.rnn(inputs_lstm)
-            h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
+            if self.bidirectional:
+                h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
+            else:
+                h = h[-1, :, :]
         elif self.rnn_type.lower() == "gru":
             rnn_out, h = self.rnn(inputs_lstm)
-            h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
+            if self.bidirectional:
+                h = torch.cat((h[-2, :, :], h[-1, :, :]), dim=1)
+            else:
+                h = h[-1, :, :]
         else:
             raise ValueError("unknown rnn_type `%s`" % self.rnn_type)
 
