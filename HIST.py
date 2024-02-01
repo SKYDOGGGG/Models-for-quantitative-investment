@@ -25,9 +25,10 @@ def cal_cos_similarity(x_in, y_in):
 
 
 class HIST(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", **kwargs):
+    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", gpu_id=1, **kwargs):
         super().__init__()
 
+        self.gpu_id = gpu_id
         self.d_feat = d_feat
         self.bidirectional = kwargs.get("双向")
         self.bi_ind = 1 + int(self.bidirectional)
@@ -67,14 +68,16 @@ class HIST(nn.Module):
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x_input):
+        device = torch.device("cuda:%d" % self.gpu_id)
+
         input_hidden, _ = self.rnn(x_input)
         input_hidden = input_hidden[:, -1, :]
         cos_mat = cal_cos_similarity(input_hidden, input_hidden)
 
         dim = cos_mat.shape[0]
         diag = torch.diag(cos_mat)
-        cos_mat_without_diag = cos_mat * (torch.ones(dim, dim) - torch.eye(dim))
-        row = torch.linspace(0, dim - 1, dim).long()
+        cos_mat_without_diag = cos_mat * (torch.ones(dim, dim) - torch.eye(dim)).to(device)
+        row = torch.linspace(0, dim - 1, dim).to(device).long()
 
         column = cos_mat_without_diag.max(1)[1].long()
         value = cos_mat_without_diag.max(1)[0]
@@ -106,7 +109,7 @@ class HIST(nn.Module):
 
 # test
 if __name__ == "__main__":
-    x = torch.randn(2000, 60, 200)
-    model = HIST(d_feat=200, hidden_size=64, num_layers=3, dropout=0.5, base_model="GRU", 双向=True)
+    x = torch.randn(2000, 60, 200).to("cuda:0")
+    model = HIST(d_feat=200, hidden_size=64, num_layers=3, dropout=0.5, base_model="GRU", gpu_id=0, 双向=True).to("cuda:0")
     y = model(x)
     print(y.shape)
